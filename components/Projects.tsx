@@ -9,6 +9,8 @@ import StoppuhrTimerImg from "@/public/stoppuhr-timer.de.png";
 import RealtimeBlue from "@/public/realtime-blue.png";
 import PostCapture from "@/public/postcapture-com.png";
 import YearProgress from "@/public/yearprogress-blue.png";
+import ShowUpInAI from "@/public/showupinai-og.png";
+
 import { Card, CardFooter, CardTitle, CardDescription, CardContent } from "./ui/card";
 
 interface ProjectCardProps {
@@ -71,6 +73,23 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ title, children, image, link,
 const Projects: React.FC = () => {
   const projects = [
     {
+      title: "ShowUpInAI.com",
+      image: ShowUpInAI,
+      link: "https://showupinai.com",
+      callToAction: "Get Discovered",
+      badge: "New",
+      children: (
+        <>
+          <p className="mt-2">
+            Get Your Website Discovered by AI Tools
+          </p>
+          <p className="text-sm">
+            ShowUpInAI helps your website get discovered by AI tools like ChatGPT, Perplexity and Copilot.
+          </p>
+        </>
+      ),
+    },
+    {
       title: "PostCapture.com",
       image: PostCapture,
       link: "https://postcapture.com",
@@ -87,6 +106,7 @@ const Projects: React.FC = () => {
         </>
       ),
     },
+
     {
       title: "realtime.blue",
       image: RealtimeBlue,
