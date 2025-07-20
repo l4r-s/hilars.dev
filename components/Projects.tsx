@@ -10,6 +10,7 @@ import RealtimeBlue from "@/public/realtime-blue.png";
 import PostCapture from "@/public/postcapture-com.png";
 import YearProgress from "@/public/yearprogress-blue.png";
 import ShowUpInAI from "@/public/showupinai-og.png";
+import BacklinkDog from "@/public/backlinkdog.png";
 
 import { Card, CardFooter, CardTitle, CardDescription, CardContent } from "./ui/card";
 
@@ -106,6 +107,28 @@ const Projects: React.FC = () => {
         </>
       ),
     },
+
+    {
+      title: "BacklinkDog.com",
+      image: BacklinkDog,
+      link: "https://backlinkdog.com",
+      callToAction: "Monitor your backlinks",
+      badge: "Building",
+      children: (
+        <>
+          <p className="mt-2">
+            They promised you a backlink.
+          </p>
+          <p className="text-sm text-orange-500">
+            Did they keep it?
+          </p>
+          <p className="text-sm">
+          Stop losing SEO juice from removed or changed backlinks. All with a lifetime deal!
+          </p>
+        </>
+      ),
+    },
+
 
     {
       title: "realtime.blue",
