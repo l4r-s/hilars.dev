@@ -5,10 +5,10 @@ helmDefaults:
 
 releases:
   - name: '{{ env "RELEASE_NAME" | default "hilars-dev" }}'
-    namespace: hilars-dev
+    namespace: hilars-prod
     chart: ./chart
     values:
-      - image: registry.l4rs.net/hilars-dev:latest
+      - image: registry.hilars.dev/hilars-dev/landing:latest
       - ingress:
           url: hilars.dev
           redirect_wwww: true

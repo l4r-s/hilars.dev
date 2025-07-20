@@ -22,7 +22,7 @@ jobs:
       - name: Log in to Docker Registry
         uses: docker/login-action@v3
         with:
-          registry: registry.l4rs.net
+          registry: registry.hilars.dev
           username: github
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
@@ -34,11 +34,11 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: |
-            registry.l4rs.net/hilars-dev:${{ github.sha }}
-            registry.l4rs.net/hilars-dev:latest
+            registry.hilars.dev/hilars-dev/landing:${{ github.sha }}
+            registry.hilars.dev/hilars-dev/landing:latest
 
       - name: Log out from Docker Registry
-        run: docker logout registry.l4rs.net
+        run: docker logout registry.hilars.dev
 
 
   ###
@@ -58,11 +58,11 @@ jobs:
       - name: Authenticate to Kubernetes cluster
         run: |
           echo ${{ secrets.K8S_SERVICE_ACCOUNT_TOKEN }} | kubectl config set-credentials github --token=$(cat -)
-          kubectl config set-cluster k8s-cluster --server=https://k8sp01.l4rs.net:6443 \
-            --certificate-authority=chart/k8sp01-ca.crt
-          kubectl config set-context hilars-dev --cluster=k8s-cluster --user=github
-          kubectl config use-context hilars-dev
+          kubectl config set-cluster k8s-cluster --server=https://kube.hilars.dev:6443 \
+            --certificate-authority=chart/kube-ca.crt
+          kubectl config set-context hilars-prod --cluster=k8s-cluster --user=github
+          kubectl config use-context hilars-prod
 
       - name: Deploy to Kubernetes using Helmfile
         run: |
-          helmfile apply --set image=registry.l4rs.net/hilars-dev:${{ github.sha }}
+          helmfile apply --set image=registry.hilars.dev/hilars-dev/landing:${{ github.sha }}
