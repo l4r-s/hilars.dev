@@ -20,18 +20,20 @@ const Welcome: React.FC = () => {
         </a>
       </div>
       <div className="mt-6 prose prose-sm text-center">
-        <p>A passionate Software and Systems Engineer specialized in DevOps, Systems Engineering, Python, JavaScript, Linux, and Automation.</p>
+        <p>
+        A Senior Engineer working at the intersection of software, infrastructure, and reliability.  
+        </p>
         {hashTagEnabled && (
           <p className="mt-3 italic">
+            <b className="text-primary">#</b>kubernetes{" "}
             <b className="text-primary">#</b>python{" "}
-            <b className="text-primary">#</b>backend{" "}
-            <b className="text-primary">#</b>opensource{" "}
+            <b className="text-primary">#</b>nextjs{" "}
+            <b className="text-primary">#</b>observability{" "}
+            <b className="text-primary">#</b>sre{" "}
             <b className="text-primary">#</b>ansible{" "}
-            <b className="text-primary">#</b>javascript{" "}
-            <b className="text-primary">#</b>frontend{" "}
-            <b className="text-primary">#</b>devops{" "}
-            <b className="text-primary">#</b>automation{" "}
-            <b className="text-primary">#</b>linux{" "}
+            <b className="text-primary">#</b>terraform{" "}
+            <b className="text-primary">#</b>typescript{" "}
+            <b className="text-primary">#</b>react/nextjs{" "}
           </p>
         )}
       </div>

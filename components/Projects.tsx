@@ -1,8 +1,6 @@
 import React from "react";
 import Image, { StaticImageData } from "next/image";
 import ConfettiImg from "@/public/confetti.png";
-import VPSStuffImg from "@/public/vps-stuff.png";
-import ChromeExtensionListImg from "@/public/chrome_extension_list.png";
 import XshotImg from "@/public/xshot_og_v3.png";
 import WeContextifyImg from "@/public/wecontextify.png";
 import StoppuhrTimerImg from "@/public/stoppuhr-timer.de.png";
@@ -78,7 +76,7 @@ const Projects: React.FC = () => {
       image: ShowUpInAI,
       link: "https://showupinai.com",
       callToAction: "Get Discovered",
-      badge: "New",
+      badge: "Active",
       children: (
         <>
           <p className="mt-2">
@@ -95,7 +93,7 @@ const Projects: React.FC = () => {
       image: PostCapture,
       link: "https://postcapture.com",
       callToAction: "Check it out",
-      badge: "New",
+      badge: "Active",
       children: (
         <>
           <p className="mt-2">
@@ -113,7 +111,7 @@ const Projects: React.FC = () => {
       image: BacklinkDog,
       link: "https://backlinkdog.com",
       callToAction: "Monitor your backlinks",
-      badge: "Building",
+      badge: "Active",
       children: (
         <>
           <p className="mt-2">
@@ -135,7 +133,7 @@ const Projects: React.FC = () => {
       image: RealtimeBlue,
       link: "https://realtime.blue",
       callToAction: "Check it out",
-      badge: "New",
+      badge: "Active",
       children: (
         <p className="mt-2">
           Track and Celebrate Your Bluesky Growth in Real-Time
@@ -159,7 +157,7 @@ const Projects: React.FC = () => {
       image: YearProgress,
       link: "https://yearprogress.blue",
       callToAction: "Keep track",
-      badge: "New",
+      badge: "Active",
       children: (
         <>
           <p className="mt-2">
@@ -168,43 +166,6 @@ const Projects: React.FC = () => {
           <p className="text-sm">
             Small little bot telling you how much of the year is left with cool visuals!
           </p>
-        </>
-      ),
-    },
-    {
-      title: "Monitor your VPS with ease 🚀",
-      image: VPSStuffImg,
-      link: "https://vps-stuff.com",
-      callToAction: "Check it out",
-      badge: "Waitlist",
-      children: (
-        <p className="mt-2">
-          No more complex setup. Install a single agent and start monitoring CPU, memory, disk, and network traffic in seconds.
-        </p>
-      ),
-    },
-    {
-      title: "5,000+ Opportunities Waiting for You!",
-      image: ChromeExtensionListImg,
-      link: "/v2ej",
-      callToAction: "Profit now!",
-      badge: "Active",
-      children: (
-        <>
-          <p className="mt-2">
-            <span className="block">As of June 3, 2024, Chrome officially deprecated Manifest V2—thousands of extensions are about to break!</span>
-            <span className="block">I&apos;ve curated a list of 5,000+ obsolete V2 extensions complete with:</span>
-          </p>
-          <ul className="list-disc list-inside mt-2">
-            <li>Install count ✅</li>
-            <li>Ratings ✅</li>
-            <li>Last Updated Date ✅</li>
-          </ul>
-          <div className="my-4 mx-auto">
-            <a href="https://www.producthunt.com/posts/v2-chrome-extension-list?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-v2&#0045;chrome&#0045;extension&#0045;list" target="_blank">
-              <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=481039&theme=light" alt="V2&#0032;Chrome&#0032;Extension&#0032;List - 5&#0044;000&#0043;&#0032;Opportunities&#0032;Waiting&#0032;for&#0032;You&#0033; | Product Hunt" style={{ width: '250px', height: '54px' }} width="250" height="54" />
-            </a>
-          </div>
         </>
       ),
     },

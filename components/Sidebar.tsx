@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import Link from 'next/link';
-import { IconStars, IconSticker2, IconAddressBook } from "@tabler/icons-react";
+import { IconStars, IconSticker2, IconAddressBook, IconHome } from "@tabler/icons-react";
 import Welcome from "./Welcome";
 import Social from "./Social";
 import Footer from "./Footer";
@@ -25,6 +25,12 @@ const Sidebar: React.FC<Props> = ({ showMenu, toggleDrawer }) => {
         <nav className="flex flex-col mt-12">
           {showMenu && (
             <ul className="menu menu-lg space-y-4">
+              <li className="font-semibold text-lg">
+                <Link href="/" className="flex items-center space-x-2 hover:text-primary transition-colors duration-300" onClick={handleLinkClick}>
+                  <IconHome />
+                  <span className="underline decoration-primary">Home</span>
+                </Link>
+              </li>
               <li className="font-semibold text-lg">
                 <Link href="/blog" className="flex items-center space-x-2 hover:text-primary transition-colors duration-300" onClick={handleLinkClick}>
                   <IconSticker2 />
