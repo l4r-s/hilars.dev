@@ -9,7 +9,7 @@ import PostCapture from "@/public/postcapture-com.png";
 import YearProgress from "@/public/yearprogress-blue.png";
 import ShowUpInAI from "@/public/showupinai-og.png";
 import BacklinkDog from "@/public/backlinkdog.png";
-
+import TouchedGrass from "@/public/touched-grass-logo.png";
 import { Card, CardFooter, CardTitle, CardDescription, CardContent } from "./ui/card";
 
 interface ProjectCardProps {
@@ -84,6 +84,23 @@ const Projects: React.FC = () => {
           </p>
           <p className="text-sm">
             ShowUpInAI helps your website get discovered by AI tools like ChatGPT, Perplexity and Copilot.
+          </p>
+        </>
+      ),
+    },
+    {
+      title: "touched-grass.com",
+      image: TouchedGrass,
+      link: "https://touched-grass.com",
+      callToAction: "Check it out",
+      badge: "Active",
+      children: (
+        <>
+          <p className="mt-2">
+            Fun website to show off that you touched grass!
+          </p>
+          <p className="text-sm">
+            Generates badges based on your activities today! Touched grass? Did some marketing? Shipped something new? Showw it off!
           </p>
         </>
       ),
