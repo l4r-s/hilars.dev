@@ -5,7 +5,7 @@ const UmamiScript: React.FC<{ websiteId: string }> = ({ websiteId }) => {
     return (
       <Script
         defer
-        src="https://umami.hilars.dev/script.js"
+        src="https://umami-dev.hilars.dev/script.js"
         data-website-id={websiteId}
       />
     );

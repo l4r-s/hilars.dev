@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <UmamiScript websiteId="78c5044e-c628-4213-952e-9ad2fa9452e9" />
+      <UmamiScript websiteId="89f091d0-82db-416e-b801-16faa132c94f" />
       <body className={inter.className}>
         <CSPostHogProvider>
           <div className="font-sans min-h-screen flex flex-col">

@@ -10,7 +10,7 @@ export default function V2eLayout({
 }>) {
   return (
     <html lang="en">
-      <UmamiScript websiteId="78c5044e-c628-4213-952e-9ad2fa9452e9" />
+      <UmamiScript websiteId="89f091d0-82db-416e-b801-16faa132c94f" />
       <body>
           <div className="min-h-screen">
             {/* <ConfettiComponent /> */}
