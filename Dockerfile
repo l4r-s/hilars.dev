@@ -1,7 +1,10 @@
+# Exact Node release for every stage; the production stage asserts it below
+ARG NODE_VERSION=24.22.1
+
 ##
 # Builder
 ##
-FROM node:20.10-alpine AS builder
+FROM node:${NODE_VERSION}-alpine3.24 AS builder
 
 WORKDIR /app
 COPY package.json yarn.lock ./
@@ -13,7 +16,11 @@ RUN NEXT_TELEMETRY_DISABLED=1 NODE_ENV=production yarn build
 ##
 # Production
 ##
-FROM node:20.10-alpine AS production
+FROM node:${NODE_VERSION}-alpine3.24 AS production
+
+# Fail the build if the runtime is not the pinned Node release
+ARG NODE_VERSION
+RUN test "$(node --version)" = "v${NODE_VERSION}"
 
 # Add a user and set permissions
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app

@@ -31,7 +31,7 @@
   "devDependencies": {
     "@tabler/icons-react": "^3.19.0",
     "@tailwindcss/typography": "tailwindcss/typography",
-    "@types/node": "^22",
+    "@types/node": "^24",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "daisyui": "^4.12.12",
