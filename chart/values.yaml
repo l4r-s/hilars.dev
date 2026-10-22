@@ -1,13 +1,31 @@
-image: registry.l4rs.net/hilars-dev:latest
+# Defaults describe the dev environment. Argo CD supplies the real values per
+# environment from l4r-s/argo-deployments apps/hilars-dev/{dev,prod}/values.yml.
 replicaCount: 1
+revisionHistoryLimit: 3
+
+# The site has no runtime secrets, so no 1Password item by default. Set this to
+# an item name in the `kube` vault to create a OnePasswordItem and load its
+# fields as environment variables.
+onepassword: ""
+
+image:
+  repository: registry.hilars.dev/hilars-dev/landing
+  tag: sha-initial
+  pullPolicy: IfNotPresent
+
 resources:
   limits:
-    memory: "2048Mi"
-    cpu: "3"
+    memory: 512Mi
+    cpu: 500m
   requests:
-    memory: "64Mi"
-    cpu: "5m"
+    memory: 64Mi
+    cpu: 5m
+
 ingress:
-  url: hilars.dev
-  redirect_wwww: true
-  certClusterIssuer: "cf"
+  className: nginx
+  certClusterIssuer: letsencrypt-prod
+  host: dev.hilars.dev
+  redirectWww: false
+  # Adds X-Robots-Tag: noindex, nofollow, so a non-production copy of the site
+  # is never indexed. Production sets it to false.
+  noindex: true

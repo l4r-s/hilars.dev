@@ -1,0 +1,22 @@
+# Mirrors l4r-s/argo-deployments apps/hilars-dev/prod/values.yml. The tests
+# render the chart with it as release `hilars-dev` in `hilars-prod` and compare
+# the result with the Helmfile release Argo CD adopts (legacy-release.json).
+replicaCount: 1
+revisionHistoryLimit: 3
+onepassword: ""
+image:
+  repository: registry.hilars.dev/hilars-dev/landing
+  tag: sha-0000000000000000000000000000000000000000
+resources:
+  limits:
+    memory: 2048Mi
+    cpu: "3"
+  requests:
+    memory: 64Mi
+    cpu: 5m
+ingress:
+  className: nginx
+  certClusterIssuer: letsencrypt-prod
+  host: hilars.dev
+  redirectWww: true
+  noindex: false

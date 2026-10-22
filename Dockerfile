@@ -31,5 +31,10 @@ COPY --from=builder --chown=app:app /app/.next/standalone ./
 COPY --from=builder --chown=app:app /app/public ./public
 COPY --from=builder --chown=app:app /app/.next/static ./.next/static
 
+# Commit served at /_dev/version; CI passes the pushed SHA. Declared last so a
+# new SHA does not invalidate the cached layers above.
+ARG HILARS_DEV_COMMIT_SHA=unknown
+ENV HILARS_DEV_COMMIT_SHA=$HILARS_DEV_COMMIT_SHA
+
 EXPOSE 3000
 CMD ["node", "server.js"]

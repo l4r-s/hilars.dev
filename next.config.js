@@ -7,6 +7,10 @@ const nextConfig = {
   async rewrites() {
     return [
         {
+          source: '/_dev/version',  // Deployed commit SHA, polled by CI
+          destination: '/api/dev-version',
+        },
+        {
           source: '/v2e',  // The alias URL
           destination: '/chrome-v2-extension-list',  // The actual page
         },

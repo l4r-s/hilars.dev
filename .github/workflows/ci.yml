@@ -1,0 +1,106 @@
+name: CI
+
+# PR checks. `pull_request` (never `pull_request_target`) runs the PR's own
+# code with a read-only token and no repository secrets, including for PRs
+# from forks, and nothing here pushes, deploys or talks to the cluster.
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    name: Production image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          cleanup: false
+
+      # Reads main's layer cache; a PR never writes it.
+      - name: Build production image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          platforms: linux/amd64
+          cache-from: type=gha,scope=hilars-dev-docker
+          build-args: |
+            HILARS_DEV_COMMIT_SHA=${{ github.sha }}
+          tags: hilars-dev:ci
+
+      - name: Smoke test the image
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: sh scripts/ci/smoke-image.sh hilars-dev:ci
+
+  deploy-config:
+    name: Chart and workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.22.1
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.21.2
+
+      - name: Lint chart
+        run: |
+          helm lint chart
+          helm lint chart --values tests/fixtures/argo-prod-values.yml
+
+      - name: Deploy config tests
+        run: yarn test
+
+      - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.7
+          ACTIONLINT_SHA256: 023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757
+        run: |
+          curl --fail --silent --show-error --location \
+            --output "${RUNNER_TEMP}/actionlint.tar.gz" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  ${RUNNER_TEMP}/actionlint.tar.gz" | sha256sum --check
+          tar -xzf "${RUNNER_TEMP}/actionlint.tar.gz" -C "${RUNNER_TEMP}" actionlint
+
+      - name: Lint workflows
+        run: '"${RUNNER_TEMP}/actionlint" -color'
+
+  # The one check to require. It needs every job above and passes only if all
+  # of them succeeded; a new job must be added to `needs`, which the deploy
+  # config tests enforce.
+  mandatory-checks:
+    name: Mandatory checks
+    if: always()
+    needs: [image, deploy-config]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every check to succeed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "${NEEDS}"
+          jq -e 'length > 0 and all(.[]; .result == "success")' <<< "${NEEDS}" > /dev/null
