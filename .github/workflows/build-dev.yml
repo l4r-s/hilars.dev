@@ -105,7 +105,11 @@ jobs:
   # Delete Deployment on PR Close/Merge
   ###
   delete_deployment:
-    if: github.event.action == 'closed'
+    # only clean up previews the build job can create (maintainer/dependabot heads);
+    # never check out fork code with secrets
+    if: >
+      github.event.action == 'closed' &&
+      github.repository_owner == github.event.pull_request.head.repo.owner.login
     runs-on: ubuntu-latest
 
     steps:
