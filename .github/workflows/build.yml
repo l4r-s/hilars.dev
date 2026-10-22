@@ -90,13 +90,13 @@ jobs:
       - name: Deploy dev
         working-directory: argo-deployments
         run: |
-          yq -i '.spec.sources[0].targetRevision = strenv(DEPLOY_SHA)' apps/${APP_NAME}/dev/application.yml
-          yq -i '.image.tag = strenv(IMAGE_TAG)' apps/${APP_NAME}/dev/values.yml
+          yq -i '.spec.sources[0].targetRevision = strenv(DEPLOY_SHA)' "apps/${APP_NAME}/dev/application.yml"
+          yq -i '.image.tag = strenv(IMAGE_TAG)' "apps/${APP_NAME}/dev/values.yml"
 
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add apps/${APP_NAME}/dev/application.yml apps/${APP_NAME}/dev/values.yml
+          git add "apps/${APP_NAME}/dev/application.yml" "apps/${APP_NAME}/dev/values.yml"
           git commit -m "deploy(${APP_NAME}): dev -> ${DEPLOY_SHA}" || exit 0
           git push
 

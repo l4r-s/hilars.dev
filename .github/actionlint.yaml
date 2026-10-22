@@ -1,0 +1,8 @@
+paths:
+  # deploy-prod-pr is kept byte-identical to the fleet's shared job (see
+  # domainrating.lol / tweet.md), so its two shellcheck notes are accepted
+  # here rather than fixed in one copy.
+  .github/workflows/build.yml:
+    ignore:
+      - 'SC2129:style'
+      - 'SC2034:warning:\d+:\d+: (url|title) appears unused'
