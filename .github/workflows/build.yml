@@ -1,0 +1,392 @@
+name: Build and deploy
+
+# Push-to-main GitOps flow: build the image, point the Argo CD dev app at it,
+# smoke-test dev, then open a production promotion PR in l4r-s/argo-deployments.
+# Nothing here talks to the cluster; Argo CD applies what argo-deployments says.
+on:
+  push:
+    branches:
+      - main
+  # Manual redeploy of the current main head, for when GitHub drops the push
+  # event and no run is created for a merge.
+  workflow_dispatch:
+
+# A main deploy is never cancelled once it runs: a newer push waits for it.
+# GitHub keeps one waiting run per group, so a third push replaces the second
+# while it is still pending.
+concurrency:
+  group: build-deploy-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  APP_NAME: hilars-dev
+  IMAGE_REPO: registry.hilars.dev/hilars-dev/landing
+  ARGO_REPO: l4r-s/argo-deployments
+
+jobs:
+  build:
+    # Every other job depends on build, so this keeps a dispatch from a
+    # feature branch from deploying unmerged code.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # The runner is thrown away after the job; removing the builder only
+      # delays deploy-dev and verify-dev, which wait for this job to finish.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          cleanup: false
+
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v4
+        with:
+          registry: registry.hilars.dev
+          username: github
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          platforms: linux/amd64
+          cache-from: type=gha,scope=${{ env.APP_NAME }}-docker
+          cache-to: type=gha,scope=${{ env.APP_NAME }}-docker,mode=max
+          build-args: |
+            HILARS_DEV_COMMIT_SHA=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE_REPO }}:sha-${{ github.sha }}
+            ${{ env.IMAGE_REPO }}:latest
+
+      - name: Log out from Docker Registry
+        run: docker logout registry.hilars.dev
+
+  deploy-dev:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Set release vars
+        run: |
+          echo "DEPLOY_SHA=${GITHUB_SHA}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=sha-${GITHUB_SHA}" >> "$GITHUB_ENV"
+
+      - name: Checkout argo-deployments
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ env.ARGO_REPO }}
+          token: ${{ secrets.ARGO_DEPLOYMENTS_TOKEN }}
+          path: argo-deployments
+
+      - name: Deploy dev
+        working-directory: argo-deployments
+        run: |
+          yq -i '.spec.sources[0].targetRevision = strenv(DEPLOY_SHA)' "apps/${APP_NAME}/dev/application.yml"
+          yq -i '.image.tag = strenv(IMAGE_TAG)' "apps/${APP_NAME}/dev/values.yml"
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add "apps/${APP_NAME}/dev/application.yml" "apps/${APP_NAME}/dev/values.yml"
+          git commit -m "deploy(${APP_NAME}): dev -> ${DEPLOY_SHA}" || exit 0
+          git push
+
+  verify-dev:
+    runs-on: ubuntu-latest
+    # Only needs the image; runs in parallel with deploy-dev. The wait step
+    # polls until Argo CD has rolled the new SHA out.
+    needs: build
+
+    steps:
+      - name: Wait for dev deployment
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          VERSION_URL: https://dev.hilars.dev/_dev/version
+          CF_ACCESS_CLIENT_ID: ${{ secrets.E2E_CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.E2E_CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          # Generous deadline: this job does not wait for deploy-dev, so the
+          # rollout time is inside the poll window.
+          deadline=$(($(date +%s) + 300))
+
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            body="$(curl --silent --show-error --fail --max-time 10 \
+              -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
+              -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
+              "$VERSION_URL" || true)"
+            deployed_sha="$(jq -r '.sha // empty' <<< "$body" 2>/dev/null || true)"
+
+            if [ "$deployed_sha" = "$EXPECTED_SHA" ]; then
+              echo "Dev is running $deployed_sha"
+              exit 0
+            fi
+
+            echo "Waiting for dev deployment. expected=$EXPECTED_SHA actual=${deployed_sha:-unknown}"
+            sleep 5
+          done
+
+          echo "Timed out waiting for $EXPECTED_SHA at $VERSION_URL"
+          exit 1
+
+      - name: Smoke test dev
+        env:
+          BASE_URL: https://dev.hilars.dev
+          CF_ACCESS_CLIENT_ID: ${{ secrets.E2E_CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.E2E_CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          for path in /healthz / /blog /projects /contact /sitemap.xml; do
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 20 \
+              -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
+              -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
+              "${BASE_URL}${path}")"
+            echo "${path} -> ${status}"
+            [ "$status" = "200" ] || exit 1
+          done
+
+  deploy-prod-pr:
+    runs-on: ubuntu-latest
+    needs: verify-dev
+
+    steps:
+      - name: Set release vars
+        run: |
+          DEPLOY_SHA="${GITHUB_SHA}"
+          DEPLOY_SHORT_SHA="${DEPLOY_SHA:0:12}"
+          echo "DEPLOY_SHA=${DEPLOY_SHA}" >> "$GITHUB_ENV"
+          echo "DEPLOY_SHORT_SHA=${DEPLOY_SHORT_SHA}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=sha-${DEPLOY_SHA}" >> "$GITHUB_ENV"
+          echo "DEPLOY_BRANCH=deploy/${APP_NAME}-prod-${DEPLOY_SHORT_SHA}-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
+
+      - name: Checkout app source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          path: app-source
+          persist-credentials: false
+
+      - name: Checkout argo-deployments
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ env.ARGO_REPO }}
+          token: ${{ secrets.ARGO_DEPLOYMENTS_TOKEN }}
+          path: argo-deployments
+          persist-credentials: false
+
+      - name: Prepare Argo production change
+        id: prepare
+        working-directory: argo-deployments
+        run: |
+          OLD_DEPLOY_SHA="$(yq -r '.spec.sources[0].targetRevision' "apps/${APP_NAME}/prod/application.yml")"
+          OLD_IMAGE_TAG="$(yq -r '.image.tag' "apps/${APP_NAME}/prod/values.yml")"
+
+          echo "OLD_DEPLOY_SHA=${OLD_DEPLOY_SHA}" >> "$GITHUB_ENV"
+          echo "OLD_IMAGE_TAG=${OLD_IMAGE_TAG}" >> "$GITHUB_ENV"
+
+          {
+            echo "# Deployment context"
+            echo
+            echo "- App name: ${APP_NAME}"
+            echo "- Previous production commit SHA: ${OLD_DEPLOY_SHA}"
+            echo "- New production commit SHA: ${DEPLOY_SHA}"
+            echo "- Previous image tag: ${OLD_IMAGE_TAG}"
+            echo "- New image tag: ${IMAGE_TAG}"
+            echo "- Argo production path: argo-deployments/apps/${APP_NAME}/prod"
+          } > ../deployment-context.md
+
+          git checkout -B "${DEPLOY_BRANCH}"
+
+          yq -i '.spec.sources[0].targetRevision = strenv(DEPLOY_SHA)' "apps/${APP_NAME}/prod/application.yml"
+          yq -i '.image.tag = strenv(IMAGE_TAG)' "apps/${APP_NAME}/prod/values.yml"
+
+          if git diff --quiet -- "apps/${APP_NAME}/prod/application.yml" "apps/${APP_NAME}/prod/values.yml"; then
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Production is already configured for ${DEPLOY_SHA}."
+          else
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Close superseded production PRs
+        if: steps.prepare.outputs.should_deploy == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.ARGO_DEPLOYMENTS_TOKEN }}
+        run: |
+          : > superseded-prs.tsv
+
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${ARGO_REPO}/pulls?state=open&per_page=100" \
+            --jq ".[] | select(.head.ref | startswith(\"deploy/${APP_NAME}-prod-\")) | [.number, .html_url, .title] | @tsv" \
+            > superseded-prs.tsv
+
+          if [ -s superseded-prs.tsv ]; then
+            while IFS=$'\t' read -r number url title; do
+              gh api \
+                -X POST \
+                -H "Accept: application/vnd.github+json" \
+                "/repos/${ARGO_REPO}/issues/${number}/comments" \
+                -f body="Superseded by production deployment ${DEPLOY_SHA}. A replacement PR will be opened by this workflow."
+
+              gh api \
+                -X PATCH \
+                -H "Accept: application/vnd.github+json" \
+                "/repos/${ARGO_REPO}/pulls/${number}" \
+                -f state=closed
+            done < superseded-prs.tsv
+          fi
+
+          {
+            echo "## Superseded unmerged PRs"
+            echo
+            if [ -s superseded-prs.tsv ]; then
+              awk -F '\t' '{ printf("- #%s [%s](%s)\n", $1, $3, $2) }' superseded-prs.tsv
+            else
+              echo "- None"
+            fi
+          } > superseded-prs.md
+
+      # fx (github.com/vercel-labs/fx), pinned to a release and its checksum, talking
+      # to llmgw, the self-hosted LLM gateway, over its OpenAI-compatible Chat
+      # Completions endpoint. Both the base URL and the virtual model alias
+      # `pr-summary` are fixed here on purpose: the gateway decides which provider and
+      # model answer that alias, so no provider key or raw model name lives in this
+      # repo. The only setting is the repository secret LLMGW_API_KEY, this repo's own
+      # gateway key. "anthropic" is only fx's name for the connection.
+      - name: Install fx
+        if: steps.prepare.outputs.should_deploy == 'true'
+        env:
+          FX_VERSION: v0.0.13
+          FX_SHA256: 53a3b30ce1541048f8fa4b42b7bc68161466bb2e3708db104449a58af3807430
+        run: |
+          curl --fail --silent --show-error --location \
+            --output "${RUNNER_TEMP}/fx.tar.gz" \
+            "https://github.com/vercel-labs/fx/releases/download/${FX_VERSION}/fx-linux-x86_64.tar.gz"
+          echo "${FX_SHA256}  ${RUNNER_TEMP}/fx.tar.gz" | sha256sum --check
+
+          mkdir -p "${HOME}/.local/bin" "${HOME}/.fx"
+          tar -xzf "${RUNNER_TEMP}/fx.tar.gz" -C "${HOME}/.local/bin" fx
+          echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
+
+          cat > "${HOME}/.fx/settings.json" <<'JSON'
+          {
+            "provider": "anthropic",
+            "providers": {
+              "anthropic": {
+                "protocol": "openai-chat-completions",
+                "base_url": "https://llmgw.hilars.dev/v1",
+                "auth": { "type": "bearer", "env": "LLMGW_API_KEY" },
+                "model_metadata": {
+                  "pr-summary": {
+                    "context_window": 1000000,
+                    "max_output_tokens": 128000,
+                    "supports_tool_use": true,
+                    "supports_vision": true
+                  }
+                }
+              }
+            },
+            "models": { "anthropic": "pr-summary" }
+          }
+          JSON
+          # fx ignores settings that group or others can write; do not rely on the umask.
+          chmod 700 "${HOME}/.fx"
+          chmod 600 "${HOME}/.fx/settings.json"
+
+      - name: Generate deployment summary
+        if: steps.prepare.outputs.should_deploy == 'true'
+        env:
+          LLMGW_API_KEY: ${{ secrets.LLMGW_API_KEY }}
+          FX_AUTO_UPGRADE: "0"
+        run: |
+          # The ./ paths in the prompt are this workspace: app-source, argo-deployments,
+          # and the two context files the steps above wrote.
+          cat > deployment-prompt.md <<'PROMPT'
+          You are preparing the body for a production deployment pull request.
+
+          Read this context first:
+          - ./deployment-context.md
+          - ./superseded-prs.md
+
+          Produce concise Markdown for a deployment PR body.
+          Summarize what changed in ./app-source between the previous production SHA and the new SHA.
+          Produce a oneliner that summarizes all changes with an indication of how wide this PR can spread on prod.
+          Use git log, git diff --stat, and the actual changed files if useful.
+          Also mention the Argo files that changed under the Argo production path.
+          Include the superseded PR references from ./superseded-prs.md.
+          If the previous SHA is unavailable locally, say that and summarize from the available new commit metadata.
+          Do not include approval instructions or merge instructions.
+          Do not create or change any file. Your final answer is the PR body and nothing else.
+          PROMPT
+
+          # The summary is a convenience: without it (no key, gateway down, timeout,
+          # empty or malformed output) the pull request still opens, with the commit
+          # list. A summary that contains the gateway key is discarded the same way —
+          # the agent has a shell, and the PR body is published. The PR body is not its
+          # only way out (fx can fetch URLs), so no checkout keeps a token on disk for it
+          # to read.
+          if [ -n "${LLMGW_API_KEY}" ] \
+            && timeout 10m fx ask --json --no-save < deployment-prompt.md > fx-result.json \
+            && jq -er '.final_output | select(type == "string" and test("\\S"))' fx-result.json > deployment-summary.md \
+            && ! grep -qF -- "${LLMGW_API_KEY}" deployment-summary.md; then
+            echo "Summary written by $(jq -r '.model' fx-result.json) in $(jq -r '.steps' fx-result.json) steps."
+          else
+            echo "::warning::fx wrote no summary; the pull request gets the commit list instead."
+            {
+              echo "The summary could not be generated. Commits since the previous production deployment:"
+              echo
+              git -C app-source log --format='- %h %s' "${OLD_DEPLOY_SHA}..${DEPLOY_SHA}" 2>/dev/null \
+                || git -C app-source log --format='- %h %s' -n 20 "${DEPLOY_SHA}"
+              echo
+              echo "Argo files: \`apps/${APP_NAME}/prod/application.yml\`, \`apps/${APP_NAME}/prod/values.yml\`"
+              echo
+              cat superseded-prs.md
+            } > deployment-summary.md
+          fi
+
+      - name: Commit and push Argo branch
+        if: steps.prepare.outputs.should_deploy == 'true'
+        working-directory: argo-deployments
+        env:
+          GH_TOKEN: ${{ secrets.ARGO_DEPLOYMENTS_TOKEN }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add "apps/${APP_NAME}/prod/application.yml" "apps/${APP_NAME}/prod/values.yml"
+          git commit -m "deploy(${APP_NAME}): prod -> ${DEPLOY_SHA}"
+
+          # The checkout persisted no credentials, so the Argo token authenticates this one
+          # push as a github.com-only header passed in this git process's environment:
+          # never written to git config or the remote URL, never on its command line.
+          GIT_CONFIG_COUNT=1 \
+            GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" \
+            GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 | tr -d '\n')" \
+            git push --force-with-lease origin "${DEPLOY_BRANCH}:${DEPLOY_BRANCH}"
+
+      - name: Open production deployment PR
+        if: steps.prepare.outputs.should_deploy == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.ARGO_DEPLOYMENTS_TOKEN }}
+        run: |
+          {
+            echo "# Production deployment: ${APP_NAME} ${DEPLOY_SHORT_SHA}"
+            echo
+            cat deployment-summary.md
+          } > pr-body.md
+
+          gh api \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${ARGO_REPO}/pulls" \
+            -f title="${APP_NAME}: prod -> ${DEPLOY_SHORT_SHA}" \
+            -f head="${DEPLOY_BRANCH}" \
+            -f base="main" \
+            -f body="$(cat pr-body.md)"

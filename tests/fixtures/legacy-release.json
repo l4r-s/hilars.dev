@@ -1,0 +1,16 @@
+{
+  "//": "Identity of the Helmfile release Argo CD adopts: `helmfile apply` of chart/ at f522df1 (release hilars-dev, namespace hilars-prod). Argo must produce objects with these kinds, names and selectors, or it would create duplicates or fail on the immutable Deployment selector.",
+  "release": "hilars-dev",
+  "namespace": "hilars-prod",
+  "objects": [
+    "Deployment/hilars-dev",
+    "Ingress/hilars-dev",
+    "Service/hilars-dev-node"
+  ],
+  "selector": { "app": "hilars-dev-hilars-dev" },
+  "tlsSecretName": "hilars-dev-tls-hilars-dev",
+  "tlsHosts": ["hilars.dev", "www.hilars.dev"],
+  "host": "hilars.dev",
+  "fromToWwwRedirect": "true",
+  "containerPort": 3000
+}

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "//test": "Deploy config tests (chart render, workflows, Dockerfile); needs helm on PATH",
+    "test": "node --test 'tests/*.test.mjs'"
   },
   "dependencies": {
     "@mdx-js/loader": "^3.0.1",
@@ -43,7 +45,8 @@
     "react-dom": "^18",
     "react-icons": "^5.2.1",
     "tailwindcss": "^3.4.13",
-    "typescript": "^5"
+    "typescript": "^5",
+    "yaml": "2.8.1"
   },
   "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
 }

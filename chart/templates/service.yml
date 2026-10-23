@@ -4,11 +4,14 @@ kind: Service
 metadata:
   name: {{ .Release.Name }}-node
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hilars-dev.labels" . | nindent 4 }}
 spec:
-  selector:
-    app: hilars-dev-{{ .Release.Name }}
-  ports:
-    - protocol: TCP
-      port: 3000
-      targetPort: 3000
   type: ClusterIP
+  selector:
+    {{- include "hilars-dev.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      protocol: TCP
+      port: 3000
+      targetPort: http

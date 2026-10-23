@@ -4,18 +4,24 @@ kind: Ingress
 metadata:
   name: {{ .Release.Name }}
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hilars-dev.labels" . | nindent 4 }}
   annotations:
-    cert-manager.io/cluster-issuer: {{ .Values.ingress.certClusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ required "ingress.certClusterIssuer is required" .Values.ingress.certClusterIssuer | quote }}
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/from-to-www-redirect: "{{ .Values.ingress.redirect_wwww }}"
+    nginx.ingress.kubernetes.io/from-to-www-redirect: {{ .Values.ingress.redirectWww | quote }}
+    {{- if .Values.ingress.noindex }}
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Robots-Tag: noindex, nofollow";
+    {{- end }}
 spec:
-  ingressClassName: "nginx"
+  ingressClassName: {{ .Values.ingress.className | quote }}
   rules:
-    - host: {{ .Values.ingress.url }}
+    - host: {{ required "ingress.host is required" .Values.ingress.host | quote }}
       http:
         paths:
           - path: /
-            pathType: ImplementationSpecific
+            pathType: Prefix
             backend:
               service:
                 name: {{ .Release.Name }}-node
@@ -23,8 +29,10 @@ spec:
                   number: 3000
   tls:
     - hosts:
-        {{- if .Values.ingress.redirect_wwww }}
-        - www.{{ .Values.ingress.url }}
+        {{- if .Values.ingress.redirectWww }}
+        - {{ printf "www.%s" .Values.ingress.host | quote }}
         {{- end }}
-        - {{ .Values.ingress.url }}
-      secretName: hilars-dev-tls-{{ .Release.Name }}
+        - {{ .Values.ingress.host | quote }}
+      # Same Secret name as the Helmfile release, so adoption keeps serving the
+      # existing certificate while cert-manager renews it.
+      secretName: {{ printf "hilars-dev-tls-%s" .Release.Name | quote }}
