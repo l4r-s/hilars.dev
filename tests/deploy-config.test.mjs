@@ -176,3 +176,22 @@ test("the production image pins Node 24.22.1 and bakes the commit SHA", () => {
   assert.match(production, /^ENV HILARS_DEV_COMMIT_SHA=\$HILARS_DEV_COMMIT_SHA$/m);
   assert.match(read("next.config.js"), /source: '\/_dev\/version',.*\n\s*destination: '\/api\/dev-version'/);
 });
+
+test("the lockfile resolves one patched next, React and sharp", () => {
+  // yarn 1 lockfile: `"name@range", name@range:` headers, then `  version "x"`.
+  const resolved = (name) => {
+    const versions = new Set();
+    for (const entry of read("yarn.lock").split("\n\n")) {
+      const [header, ...body] = entry.trim().split("\n");
+      const names = header.replace(/:$/, "").split(", ").map((spec) => spec.replace(/"/g, "").replace(/@[^@]*$/, ""));
+      if (names.includes(name)) versions.add(body.find((line) => line.startsWith("  version ")).split('"')[1]);
+    }
+    return [...versions];
+  };
+  // GHSA-673q-mjm6-r5xr and CVE-2026-96889 / GHSA-2464-fhr4-w9xw are fixed
+  // in next 16.4.1 and sharp 0.35.5; scripts/ci/smoke-image.sh checks the image.
+  assert.deepEqual(resolved("next"), ["16.4.2"]);
+  assert.deepEqual(resolved("sharp"), ["0.35.5"]);
+  assert.deepEqual(resolved("react"), ["19.3.1"]);
+  assert.deepEqual(resolved("react-dom"), ["19.3.1"]);
+});

@@ -50,9 +50,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function V2ExtensionList({ searchParams }: { searchParams: { [key: string]: string } }) {
+export default async function V2ExtensionList(props: { searchParams: Promise<{ [key: string]: string }> }) {
+  const searchParams = await props.searchParams;
   // Get referrer from headers
-  const reqHeaders = headers();
+  const reqHeaders = await headers();
   const referrer = reqHeaders.get('referer') || 'https://hilars.dev/chrome-v2-extension-list';
 
   // Get referrer from search params

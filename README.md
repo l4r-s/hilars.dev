@@ -4,7 +4,8 @@ This repository contains the source code for my personal website - [hilars.dev](
 
 ## Sharp notes
 
-`sharp` must be locked at `0.32.6` otherwise it will not work!
+`sharp` is pinned exactly and must stay at `0.35.5` or newer (the floor for
+CVE-2026-96889 / GHSA-2464-fhr4-w9xw); it has to match the one Next.js resolves.
 
 ## Deployment
 

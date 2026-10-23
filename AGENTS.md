@@ -1,7 +1,7 @@
 # hilars.dev
 
-Next.js 14 (App Router, MDX) personal site, yarn 1, standalone output in a
-Node 24.22.1 Alpine image. Dev server: `yarn dev` → http://localhost:3000.
+Next.js 16 / React 19 (App Router, MDX) personal site, yarn 1, standalone
+output in a Node 24.22.1 Alpine image. Dev server: `yarn dev` → http://localhost:3000.
 
 ## Deploy (GitOps, Argo CD)
 
@@ -37,4 +37,6 @@ Node 24.22.1 Alpine image. Dev server: `yarn dev` → http://localhost:3000.
 `scripts/ci/smoke-image.sh`) and `deploy-config` (helm lint, `yarn test`,
 actionlint) behind the `Mandatory checks` gate. A new job must be added to the
 gate's `needs`; the tests enforce it. Never add a `pull_request_target`
-workflow. `yarn lint` is broken (next lint vs ESLint 9) and is not in CI.
+workflow. `yarn lint` (ESLint 9 flat config) runs but reports pre-existing
+findings, so it is not in CI. The smoke test pins next 16.4.2, React 19.3.1
+and sharp 0.35.5 inside the image; bump it together with those packages.
