@@ -1,9 +1,7 @@
 import React from "react";
 import BlogHeader from "@/components/BlogHeader";
-import dynamic from 'next/dynamic';
 import NextJsShortLinkImg from "@/public/blog-nextjs-shortlink.png";
-
-const EmbedGist = dynamic(() => import('@/components/embed-gist'), { ssr: false });
+import EmbedGist from '@/components/embed-gist-lazy';
 
 export const metadata = {
   metadataBase: new URL('https://hilars.dev'),

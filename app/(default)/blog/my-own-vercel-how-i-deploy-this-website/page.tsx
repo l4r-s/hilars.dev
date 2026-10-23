@@ -1,11 +1,9 @@
 import React from "react";
 import BlogHeader from "@/components/BlogHeader";
-import dynamic from 'next/dynamic';
 import { ArrowRight, ArrowDown } from "lucide-react"
 import Image from "next/image";
 import MyOwnVercelImg from "@/public/blog/my-own-vercel-how-i-deploy-this-website/pr-comment.png"
-
-const EmbedGist = dynamic(() => import('@/components/embed-gist'), { ssr: false });
+import EmbedGist from '@/components/embed-gist-lazy';
 
 export const metadata = {
   metadataBase: new URL('https://hilars.dev'),

@@ -1,8 +1,9 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-export default function Page({ searchParams }: { searchParams: { [key: string]: string } }) {
-  const reqHeaders = headers();
+export default async function Page(props: { searchParams: Promise<{ [key: string]: string }> }) {
+  const searchParams = await props.searchParams;
+  const reqHeaders = await headers();
 
   // get referrer from headers this is the url of the page that the user was on before they were redirected to this page
   const referrer = reqHeaders.get('referer') || 'https://hilars.dev/v2e';

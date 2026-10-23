@@ -1,10 +1,8 @@
 import React from "react";
 import BlogHeader from "@/components/BlogHeader";
-import dynamic from 'next/dynamic';
 import Link from "next/link";
 import F5BotImg from "@/public/blog/automating-keyword-management-with-f5bot/f5bot-logo.png"
-
-const EmbedGist = dynamic(() => import('@/components/embed-gist'), { ssr: false });
+import EmbedGist from '@/components/embed-gist-lazy';
 
 export const metadata = {
   metadataBase: new URL('https://hilars.dev'),
